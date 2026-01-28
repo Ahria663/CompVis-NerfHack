@@ -1,54 +1,58 @@
 import cv2
-from inference_sdk import InferenceHTTPClient
+import numpy as np
 
-# 1. Configuration - Use the credentials from your RAPID screenshot
-# Use the "Private API Key" from your Roboflow Settings
-# API_KEY = "e5X9QkH4oVr3n1rMzpT3" 
-WORKSPACE = "nerfhacks"
-WORKFLOW_ID = "find-targets-2" # Updated based on your latest terminal output
-
-# 2. Initialize Client
-# IMPORTANT: Use the standard detect endpoint if serverless is failing
-# Change the URL to match your RAPID screenshot
-client = InferenceHTTPClient(
-    api_url="https://serverless.roboflow.com", 
-    api_key="e5X9QkH4oVr3n1rMzpT3" 
-)
+# Define the Green HSV range
+# Hue: 35-85 (covers most shades of green)
+# Saturation: 100-255 (excludes grey/white)
+# Value: 40-255 (excludes pure black)
+LOWER_GREEN = np.array([35, 100, 40])
+UPPER_GREEN = np.array([85, 255, 255])
 
 cap = cv2.VideoCapture(0)
 
 while True:
     ret, frame = cap.read()
-    if not ret: break
+    if not ret:
+        break
 
-    try:
-        # 3. Use run_workflow correctly
-        # The images dict key must match the input name in your Roboflow Workflow
-        result = client.run_workflow(
-            workspace_name=WORKSPACE,
-            workflow_id=WORKFLOW_ID,
-            images={"image": frame} 
-        )
+    # 1. Pre-process: Blur to reduce noise and convert to HSV
+    blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-        # 4. Parse RAPID Output
-        # Workflows return a list of results. We look for the predictions inside.
-        if result and len(result) > 0:
-            # Adjust the key 'predictions' if you renamed the output in Roboflow
-            predictions = result[0].get("output", {}).get("predictions", [])
+    # 2. Create the Mask
+    mask = cv2.inRange(hsv, LOWER_GREEN, UPPER_GREEN)
+    
+    # 3. Clean up the mask (remove small noise dots)
+    mask = cv2.erode(mask, None, iterations=2)
+    mask = cv2.dilate(mask, None, iterations=2)
+
+    # 4. Find the outlines (contours) of green objects
+    contours, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        
+        # Only detect items larger than 500 pixels (prevents tiny flicker)
+        if area > 500:
+            # Get the square coordinates
+            x, y, w, h = cv2.boundingRect(cnt)
             
-            for pred in predictions:
-                x, y = int(pred['x']), int(pred['y'])
-                w, h = int(pred['width']), int(pred['height'])
-                
-                # Draw the target lock
-                cv2.rectangle(frame, (int(x-w/2), int(y-h/2)), (int(x+w/2), int(y+h/2)), (0, 255, 0), 2)
-                print(f"LOCKED: X={x} Y={y}")
+            # Draw the box
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            
+            # Add the label
+            cv2.putText(frame, "nerf target", (x, y - 10), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            
+            # Center Crosshair
+            cx, cy = x + w//2, y + h//2
+            cv2.drawMarker(frame, (cx, cy), (0, 255, 0), cv2.MARKER_CROSS, 15, 2)
 
-    except Exception as e:
-        print(f"Inference Error: {e}")
+    # Show the results
+    cv2.imshow("Green Detection", frame)
 
-    cv2.imshow("Turret RAPID Vision", frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'): break
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
 cap.release()
 cv2.destroyAllWindows()
