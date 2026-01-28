@@ -1,62 +1,32 @@
 import cv2
 import torch
-import numpy as npq
+import numpy as np
 from transformers import pipeline
-from PIL import Image  
+from PIL import Image
 
-# --- COLOR VERIFICATION FUNCTION ---
-def is_it_red(frame, box):
-    """
-    TWEAK HERE: To change target color, adjust the 'lower' and 'upper' HSV arrays.
-    This function acts as a 'second opinion' for the AI to ensure the target is red.
-    """
-    # Convert AI coordinates to integers and ensure they stay within the camera frame
-    xmin, ymin = max(0, int(box['xmin'])), max(0, int(box['ymin']))
-    xmax, ymax = min(frame.shape[1], int(box['xmax'])), min(frame.shape[0], int(box['ymax']))
-    
-    # ROI (Region of Interest): Crop the image to only show what the AI detected
-    roi = frame[ymin:ymax, xmin:xmax]
-    
-    # Guard against empty detections
-    if roi.size == 0: return False
+# --- CONFIGURATION & PATHS ---
+# TWEAK HERE: Replace "path/to/your/custom_model" with the folder containing 
+# your trained 'config.json' and 'model.safetensors' files.
+CUSTOM_MODEL_PATH = "./models/nerfhack-detector"
 
-    # Convert crop from BGR (standard) to HSV (better for color isolation)
-    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-    
-    # RED logic: Red is unique because it exists at both the start and end of the HSV spectrum.
-    # lower_red1/upper_red1: Darker reds (0-10 degrees)
-    # lower_red2/upper_red2: Brighter/Pinkish reds (170-180 degrees)
-    lower_red1, upper_red1 = np.array([0, 120, 70]), np.array([10, 255, 255])
-    lower_red2, upper_red2 = np.array([170, 120, 70]), np.array([180, 255, 255])
-    
-    # Create a binary mask: pixels matching red become white (255), everything else black (0)
-    mask = cv2.inRange(hsv, lower_red1, upper_red1) + cv2.inRange(hsv, lower_red2, upper_red2)
-    
-    # TWEAK HERE: Increase '0.15' (15%) if the turret is firing at things that are only slightly red.
-    return (np.sum(mask > 0) / mask.size) > 0.15 
+# TWEAK HERE: Replace with the exact label name you used during training (e.g., 'target')
+MY_CUSTOM_LABEL = "target" 
 
-# --- AI INITIALIZATION ---
-# Select GPU (cuda) if you have one, otherwise use CPU.
+# Use GPU if available
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Load the DETR (Detection Transformer). This is a modern, non-RNN architecture.
-detector = pipeline("object-detection", model="facebook/detr-resnet-50", device=device)
+# Load your CUSTOM fine-tuned model
+# Note: This replaces the generic 'facebook/detr-resnet-50'
+detector = pipeline("object-detection", model=CUSTOM_MODEL_PATH, device=device)
 
-# --- CONFIGURATION (TWEAK FREQUENTLY) ---
-# TWEAK HERE: Add labels the AI might call your target (e.g., 'frisbee' for a round target).
-MY_TARGETS = ['sports ball', 'cup', 'bottle', 'apple', 'orange']
-
-# TWEAK HERE: Lower this (e.g., 0.3) if the AI is missing targets. Raise it (e.g., 0.8) if it's too twitchy.
-MIN_CONFIDENCE = 0.5
-
-# TWEAK HERE: Higher number = faster video but slower AI updates. 4-6 is usually a sweet spot for laptops.
-SKIP_FRAMES = 4 
-
+# --- SYSTEM SETTINGS ---
+MIN_CONFIDENCE = 0.7  # We can set this higher because the model is specialized
+SKIP_FRAMES = 3       # Fewer frames to skip if your laptop has a good GPU
 cap = cv2.VideoCapture(0)
 frame_count = 0
 last_results = []
 
-print("System Active. Searching for RED targets...")
+print(f"System Active. Hunting for custom target: {MY_CUSTOM_LABEL}...")
 
 while True:
     ret, frame = cap.read()
@@ -64,56 +34,50 @@ while True:
 
     h, w, _ = frame.shape
 
-    # Performance optimization: The 'Brain' only thinks every X frames to keep the 'Eyes' smooth.
+    # Performance optimization
     if frame_count % SKIP_FRAMES == 0:
-        # Prep image for AI: DETR works better with RGB (PIL) than BGR (OpenCV)
         pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        pil_img.thumbnail((400, 400)) # Keep resizing for speed
         
-        # Shrinking image makes the Transformer math run significantly faster.
-        pil_img.thumbnail((400, 400))
-        
-        # Run inference (The actual AI detection)
+        # Run inference using your custom weights
         raw_results = detector(pil_img, threshold=MIN_CONFIDENCE)
 
         valid_targets = []
         for res in raw_results:
-            # FILTER 1: Label check (Stops it from shooting people)
-            if res['label'] in MY_TARGETS:
-                
-                # RE-SCALING: Because we resized to 400x400 for the AI, we must scale coords back 
-                # to the original camera resolution (e.g., 640x480) for accurate aiming.
+            # Check if the AI found the specific object you trained it on
+            if res['label'] == MY_CUSTOM_LABEL:
+                # Re-scale coordinates to full frame
                 box = res['box']
                 scale_x, scale_y = w / 400, h / 400
-                scaled_box = {
+                res['scaled_box'] = {
                     'xmin': box['xmin'] * scale_x, 'ymin': box['ymin'] * scale_y,
                     'xmax': box['xmax'] * scale_x, 'ymax': box['ymax'] * scale_y
                 }
-                
-                # FILTER 2: Color check (Stops it from shooting non-red objects in your list)
-                if is_it_red(frame, scaled_box):
-                    res['scaled_box'] = scaled_box 
-                    valid_targets.append(res)
+                valid_targets.append(res)
 
-        # SELECTION LOGIC (The 'Suggestible' part):
-        # We only care about ONE target. Here we pick the one the AI is most confident in.
-        # TWEAK HERE: Change 'max' to find the target closest to center if you want a different priority.
-        last_results = [max(valid_targets, key=lambda x: x['score'])] if valid_targets else []
+        # SELECTION LOGIC: If multiple targets exist, pick the largest one (likely closest)
+        if valid_targets:
+            best_target = max(valid_targets, key=lambda x: (x['box']['xmax'] - x['box']['xmin']))
+            last_results = [best_target]
+        else:
+            last_results = []
 
-    # --- UI DRAWING (Visual Feedback) ---
+    # --- UI DRAWING ---
     for res in last_results:
         b = res['scaled_box']
-        # Draw Red Bounding Box
-        cv2.rectangle(frame, (int(b['xmin']), int(b['ymin'])), (int(b['xmax']), int(b['ymax'])), (0, 0, 255), 3)
+        # Drawing a specialized target lock UI
+        cv2.rectangle(frame, (int(b['xmin']), int(b['ymin'])), (int(b['xmax']), int(b['ymax'])), (0, 255, 0), 2)
         
-        # Calculate the Target Center (This is the coordinate you send to the Raspberry Pi)
+        # Calculate aiming coordinates
         cx, cy = int((b['xmin'] + b['xmax']) / 2), int((b['ymin'] + b['ymax']) / 2)
         
-        # Draw Target Crosshair
-        cv2.drawMarker(frame, (cx, cy), (0, 255, 0), cv2.MARKER_CROSS, 20, 2)
-        cv2.putText(frame, f"LOCKED: {res['label']}", (int(b['xmin']), int(b['ymin']-10)), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        # Crosshair and status text
+        cv2.drawMarker(frame, (cx, cy), (0, 255, 0), cv2.MARKER_CROSS, 30, 2)
+        cv2.putText(frame, f"LOCKED: {res['label']} ({round(res['score'], 2)})", 
+                    (int(b['xmin']), int(b['ymin']-10)), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-    cv2.imshow('Turret Vision', frame)
+    cv2.imshow('Custom Trained Turret Vision', frame)
     frame_count += 1
     if cv2.waitKey(1) & 0xFF == ord('q'): break
 
