@@ -85,11 +85,26 @@ class TargetDetector:
             for box in boxes:
                 cls = int(box.cls[0])
                 conf = float(box.conf[0])
+                """
+                ----------------------------------------------------------------------------------
+                HUMAN AVOIDANCE:
+                The following code block ensures that if a human (class 0) is detected by YOLO,
+                the system will not target any objects in that frame. This is a critical safety feature.
+                DO NOT REMOVE OR MODIFY THIS SECTION.
+                - WiDS
+                ----------------------------------------------------------------------------------
+                """
                 
                 # STRICT HUMAN AVOIDANCE
                 if cls == 0:
                     target['human_in_frame'] = True
                     continue 
+
+                """
+                ----------------------------------------------------------------------------------
+                END HUMAN AVOIDANCE
+                ----------------------------------------------------------------------------------
+                """
                 
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
                 x1, y1 = max(0, x1), max(0, y1)
@@ -187,10 +202,25 @@ class TargetDetector:
         else:
             cv2.putText(display, "NO TARGET", (10, 40), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1.4, (0, 0, 255), 2)
+        """
+        ----------------------------------------------------------------------------------
+        HUMAN DETECTION WARNING
+        If a human is detected in the frame, display a prominent warning message.
+        This is crucial for safety to prevent accidental targeting of people.
+        DO NOT REMOVE THIS SECTION.
+        - WiDS
+        ----------------------------------------------------------------------------------
         
+        """
         if target.get('human_in_frame'):
             cv2.putText(display, "!!! HUMAN DETECTED - SAFETY LOCK !!!", (10, 150), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            
+        """
+        ----------------------------------------------------------------------------------
+        END HUMAN DETECTION WARNING
+        ----------------------------------------------------------------------------------
+        """
         
         # Stats
         if self.frame_count > 0:
@@ -414,32 +444,32 @@ import psutil
 
 import shutil
 
-def check_system_status():
-    # 1. Power/Battery Usage
-    battery = psutil.sensors_battery()
-    if battery:
-        plugged = "Plugged In" if battery.power_plugged else "Discharged"
-        print(f"--- Power Status ---")
-        print(f"Battery Level: {battery.percent}%")
-        print(f"Status:        {plugged}")
-        print(f"Time Left:     {battery.secsleft // 60} minutes (approx)")
-    else:
-        print("--- Power Status ---\nBattery info not available (Desktop PC?)")
+# def check_system_status():
+#     # 1. Power/Battery Usage
+#     battery = psutil.sensors_battery()
+#     if battery:
+#         plugged = "Plugged In" if battery.power_plugged else "Discharged"
+#         print(f"--- Power Status ---")
+#         print(f"Battery Level: {battery.percent}%")
+#         print(f"Status:        {plugged}")
+#         print(f"Time Left:     {battery.secsleft // 60} minutes (approx)")
+#     else:
+#         print("--- Power Status ---\nBattery info not available (Desktop PC?)")
 
-    print("\n--- Capacity Usage ---")
+#     print("\n--- Capacity Usage ---")
     
-    # 2. CPU Usage
-    cpu_usage = psutil.cpu_percent(interval=1)
-    print(f"CPU Usage:     {cpu_usage}%")
+#     # 2. CPU Usage
+#     cpu_usage = psutil.cpu_percent(interval=1)
+#     print(f"CPU Usage:     {cpu_usage}%")
 
-    # 3. RAM Usage
-    memory = psutil.virtual_memory()
-    print(f"RAM Usage:     {memory.percent}% ({memory.used // (1024**2)}MB / {memory.total // (1024**2)}MB)")
+#     # 3. RAM Usage
+#     memory = psutil.virtual_memory()
+#     print(f"RAM Usage:     {memory.percent}% ({memory.used // (1024**2)}MB / {memory.total // (1024**2)}MB)")
 
-    # 4. Disk Usage
-    total, used, free = shutil.disk_usage("/")
-    print(f"Disk Usage:    {(used/total)*100:.1f}% used")
-    print(f"Disk Free:     {free // (1024**3)} GB remaining")
+#     # 4. Disk Usage
+#     total, used, free = shutil.disk_usage("/")
+#     print(f"Disk Usage:    {(used/total)*100:.1f}% used")
+#     print(f"Disk Free:     {free // (1024**3)} GB remaining")
 
-if __name__ == "__main__":
-    check_system_status()
+# if __name__ == "__main__":
+#     check_system_status()
