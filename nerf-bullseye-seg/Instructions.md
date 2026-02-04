@@ -100,5 +100,4 @@ Then tune `--h-min` / `--h-max` on the command line.
 If you'd like, I can:
 - Wire the CLI HSV flags into `detect_target()` so you can tune color without editing the file.
 - Create a small tuning utility that shows a live HSV inspector to pick ranges interactively.
-
-Tell me which follow-up you'd like and I'll implement it.
+ss
