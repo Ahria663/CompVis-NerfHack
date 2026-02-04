@@ -54,6 +54,8 @@ nerf-bullseye-seg/
 ├── Instructions.md       # Hardware setup and calibration guide
 ├── requirements.txt      # Python dependencies
 └── .gitignore            # Excludes heavy model weights (.pt files)
+```
+--- 
 
 ## Created By 
 **BU Women in Data Science (WiDS)**
