@@ -1,4 +1,4 @@
-# Nerf Hackathon — nerf_detector.py
+# Nerf Hackathon: nerf_detector.py
 
 This README explains what `nerf_detector.py` does, how to run it, and how to tune its parameters. It's written as a short instructional guide for students building and testing the detector.
 
