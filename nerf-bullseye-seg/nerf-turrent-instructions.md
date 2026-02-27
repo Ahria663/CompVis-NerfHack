@@ -23,9 +23,16 @@ cd the directory that contains your nerf project
 
 #### Step 2: Activate your Python 3.10 environment
 
+
 ```bash
+python3 -m venv venv310
+
 source venv310/Scripts/activate
 ```
+```same thing but in windows```
+venv310\Scripts\activate
+
+```same thing but in powershell``` .\venv310\Scripts\Activate.ps1
 
 You should see `(venv310)` at the start of your prompt.
 
