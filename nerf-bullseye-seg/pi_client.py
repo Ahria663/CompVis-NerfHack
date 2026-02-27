@@ -87,24 +87,23 @@ class PiTurretClient:
         time.sleep(0.5)
 
     def read_frame(self):
-        rgb = self.picam2.capture_array()
-        bgr = rgb[:, :,1]
-        return bgr
+    rgb = self.picam2.capture_array()              # (H,W,3) RGB
+    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)     # (H,W,3) BGR
+    return bgr
 
     # ---------------------------
     # Motion detection
     # ---------------------------
     def detect_motion(self, frame):
-        
-    # frame can be (H,W,3) or (H,W)
+    """Returns True if significant motion detected (safe for gray or BGR)."""
     if frame is None:
         return False
 
+    # Convert to gray only if it is actually a 3-channel image
     if USE_GRAYSCALE_FOR_MOTION:
-        if len(frame.shape) == 3 and frame.shape[2] == 3:
+        if frame.ndim == 3 and frame.shape[2] == 3:
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         else:
-            # already grayscale
             img = frame
     else:
         img = frame
