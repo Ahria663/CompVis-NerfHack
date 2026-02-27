@@ -87,37 +87,37 @@ class PiTurretClient:
         time.sleep(0.5)
 
     def read_frame(self):
-    rgb = self.picam2.capture_array()              # (H,W,3) RGB
-    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)     # (H,W,3) BGR
-    return bgr
+        rgb = self.picam2.capture_array()              # (H,W,3) RGB
+        bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)     # (H,W,3) BGR
+        return bgr
 
     # ---------------------------
     # Motion detection
     # ---------------------------
     def detect_motion(self, frame):
     """Returns True if significant motion detected (safe for gray or BGR)."""
-    if frame is None:
-        return False
-
-    # Convert to gray only if it is actually a 3-channel image
-    if USE_GRAYSCALE_FOR_MOTION:
-        if frame.ndim == 3 and frame.shape[2] == 3:
-            img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if frame is None:
+            return False
+    
+        # Convert to gray only if it is actually a 3-channel image
+        if USE_GRAYSCALE_FOR_MOTION:
+            if frame.ndim == 3 and frame.shape[2] == 3:
+                img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            else:
+                img = frame
         else:
             img = frame
-    else:
-        img = frame
-
-    img = cv2.GaussianBlur(img, BLUR_KERNEL, 0)
-
-    fg_mask = self.bg_subtractor.apply(img)
-    motion_pixels = cv2.countNonZero(fg_mask)
-    self.last_motion_pixels = motion_pixels
-
-    if SHOW_MOTION_MASK and self.preview_enabled:
-        cv2.imshow("Motion Mask", fg_mask)
-
-    return motion_pixels > MOTION_THRESHOLD
+    
+        img = cv2.GaussianBlur(img, BLUR_KERNEL, 0)
+    
+        fg_mask = self.bg_subtractor.apply(img)
+        motion_pixels = cv2.countNonZero(fg_mask)
+        self.last_motion_pixels = motion_pixels
+    
+        if SHOW_MOTION_MASK and self.preview_enabled:
+            cv2.imshow("Motion Mask", fg_mask)
+    
+        return motion_pixels > MOTION_THRESHOLD
 
     # ---------------------------
     # API call
