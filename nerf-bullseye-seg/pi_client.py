@@ -94,22 +94,31 @@ class PiTurretClient:
     # ---------------------------
     # Motion detection
     # ---------------------------
-    def detect_motion(self, frame_bgr):
-        if USE_GRAYSCALE_FOR_MOTION:
-            img = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+    def detect_motion(self, frame):
+        
+    # frame can be (H,W,3) or (H,W)
+    if frame is None:
+        return False
+
+    if USE_GRAYSCALE_FOR_MOTION:
+        if len(frame.shape) == 3 and frame.shape[2] == 3:
+            img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         else:
-            img = frame_bgr
+            # already grayscale
+            img = frame
+    else:
+        img = frame
 
-        img = cv2.GaussianBlur(img, BLUR_KERNEL, 0)
-        fg_mask = self.bg_subtractor.apply(img)
+    img = cv2.GaussianBlur(img, BLUR_KERNEL, 0)
 
-        motion_pixels = cv2.countNonZero(fg_mask)
-        self.last_motion_pixels = motion_pixels
+    fg_mask = self.bg_subtractor.apply(img)
+    motion_pixels = cv2.countNonZero(fg_mask)
+    self.last_motion_pixels = motion_pixels
 
-        if SHOW_MOTION_MASK and self.preview_enabled:
-            cv2.imshow("Motion Mask", fg_mask)
+    if SHOW_MOTION_MASK and self.preview_enabled:
+        cv2.imshow("Motion Mask", fg_mask)
 
-        return motion_pixels > MOTION_THRESHOLD
+    return motion_pixels > MOTION_THRESHOLD
 
     # ---------------------------
     # API call
