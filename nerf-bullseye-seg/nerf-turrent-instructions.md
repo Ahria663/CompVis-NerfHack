@@ -32,7 +32,7 @@ You should see `(venv310)` at the start of your prompt.
 #### Step 3: Start the server
 
 ```bash
-uvicorn main_api:app --host 0.0.0.0 --port 8000
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 You should see:
