@@ -73,8 +73,8 @@ class PiTurretClient:
         Picamera2 returns RGB by default for RGB888.
         """
         rgb = self.picam2.capture_array()
-        bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        return bgr
+        green_only = rgb[:, :, 1]
+        return green_only
 
     # ---------------------------
     # Motion detection
