@@ -88,7 +88,7 @@ class PiTurretClient:
 
     def read_frame(self):
         rgb = self.picam2.capture_array()
-        bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        bgr = rgb[:, :,1]
         return bgr
 
     # ---------------------------
