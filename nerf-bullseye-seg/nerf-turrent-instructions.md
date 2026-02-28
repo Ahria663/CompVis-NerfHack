@@ -230,7 +230,7 @@ cd to-your-project-directory
 source venv310/Scripts/activate
 
 # Run server
-uvicorn main_api:app --host 0.0.0.0 --port 8000
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ### On Raspberry Pi (Client)
@@ -264,7 +264,6 @@ python3 ~/pi_client.py
 ### Server not starting
 
 - Make sure you activated the venv310 environment
-- Check for syntax errors in main_api.py (no stray ``` backticks)
 - Make sure port 8000 isn't already in use
 
 ### Slow response times
