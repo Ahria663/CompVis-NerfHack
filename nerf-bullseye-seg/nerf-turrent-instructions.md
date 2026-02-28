@@ -21,7 +21,7 @@ This system has two parts:
 cd the directory that contains your nerf project
 ```
 
-#### Step 2: Activate your Python 3.10 environment
+#### Step 2: Create & Activate your Python 3.10 environment
 
 
 ```bash
