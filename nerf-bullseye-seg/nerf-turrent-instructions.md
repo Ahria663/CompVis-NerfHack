@@ -21,10 +21,25 @@ This system has two parts:
 cd the directory that contains your nerf project
 ```
 
-#### Step 2: Activate your Python 3.10 environment
+#### Step 2: Create & Activate your Python 3.10 environment
+#### PS: You need Python 3.10 installed
 
+**Mac/Linux:**
 ```bash
-source venv310/Scripts/activate
+python3.10 -m venv venv310
+source venv310/bin/activate
+```
+
+**Windows CMD:**
+```cmd
+py -3.10 -m venv venv310
+venv310\Scripts\activate
+```
+
+**Windows PowerShell:**
+```powershell
+py -3.10 -m venv venv310
+.\venv310\Scripts\Activate.ps1
 ```
 
 You should see `(venv310)` at the start of your prompt.
@@ -215,7 +230,7 @@ cd to-your-project-directory
 source venv310/Scripts/activate
 
 # Run server
-uvicorn main_api:app --host 0.0.0.0 --port 8000
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ### On Raspberry Pi (Client)
@@ -249,7 +264,6 @@ python3 ~/pi_client.py
 ### Server not starting
 
 - Make sure you activated the venv310 environment
-- Check for syntax errors in main_api.py (no stray ``` backticks)
 - Make sure port 8000 isn't already in use
 
 ### Slow response times

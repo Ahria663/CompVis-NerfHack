@@ -80,7 +80,7 @@ class PiTurretClient:
     def setup_camera(self):
         self.picam2 = Picamera2()
         config = self.picam2.create_video_configuration(
-            main={"size": (FRAME_WIDTH, FRAME_HEIGHT), "format": "RGB888"}
+            main={"size": (FRAME_WIDTH, FRAME_HEIGHT), "format": "BGR888"}
         )
         self.picam2.configure(config)
         self.picam2.start()
